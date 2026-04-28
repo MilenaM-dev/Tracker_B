@@ -14,11 +14,16 @@ def save_books():
         json.dump(books, f, ensure_ascii=False, indent=4)
 
 def update_table(data=None):
+    # Очищаем таблицу
     for row in tree.get_children():
         tree.delete(row)
     
     if data is None:
         data = books
+    
+    if not data:
+        tk.Label(table_frame, text="Список пуст", font=("Arial", 10)).place(x=10, y=10)
+        return
     
     for b in data:
         tree.insert("", tk.END, values=(b["title"], b["author"], b["genre"], b["pages"]))
@@ -29,10 +34,12 @@ def add_book():
     genre = genre_entry.get().strip()
     pages = pages_entry.get().strip()
     
+    # Проверка полей
     if not title or not author or not genre or not pages:
         messagebox.showerror("Ошибка", "Заполните все поля!")
         return
     
+    # Проверка страниц
     try:
         pages = int(pages)
         if pages <= 0:
@@ -42,6 +49,7 @@ def add_book():
         messagebox.showerror("Ошибка", "Количество страниц должно быть числом!")
         return
     
+    # Добавляем книгу
     books.append({
         "title": title,
         "author": author,
@@ -52,6 +60,7 @@ def add_book():
     save_books()
     update_table()
     
+    # Очищаем поля
     title_entry.delete(0, tk.END)
     author_entry.delete(0, tk.END)
     genre_entry.delete(0, tk.END)
@@ -62,15 +71,22 @@ def add_book():
 def delete_book():
     selected = tree.selection()
     if not selected:
-        messagebox.showerror("Ошибка", "Выберите книгу!")
+        messagebox.showerror("Ошибка", "Выберите книгу для удаления!")
         return
     
-    for item in selected:
-        idx = int(item)
-        books.pop(idx)
+    # Получаем название выбранной книги
+    item = tree.item(selected[0])
+    title = item["values"][0]
+    
+    # Ищем и удаляем по названию
+    for i, book in enumerate(books):
+        if book["title"] == title:
+            books.pop(i)
+            break
     
     save_books()
     update_table()
+    messagebox.showinfo("Успех", f"Книга '{title}' удалена!")
 
 def filter_books():
     genre_filter = genre_filter_entry.get().strip().lower()
@@ -78,16 +94,21 @@ def filter_books():
     
     filtered = books.copy()
     
+    # Фильтр по жанру
     if genre_filter:
         filtered = [b for b in filtered if genre_filter in b["genre"].lower()]
     
+    # Фильтр по страницам (> значение)
     if pages_filter:
         try:
             p = int(pages_filter)
             filtered = [b for b in filtered if b["pages"] > p]
         except:
-            messagebox.showerror("Ошибка", "Страницы для фильтра - число!")
+            messagebox.showerror("Ошибка", "Количество страниц для фильтра должно быть числом!")
             return
+    
+    if not filtered:
+        messagebox.showinfo("Результат", "Книги не найдены!")
     
     update_table(filtered)
 
@@ -95,6 +116,9 @@ def reset_filter():
     genre_filter_entry.delete(0, tk.END)
     pages_filter_entry.delete(0, tk.END)
     update_table()
+
+def show_all():
+    reset_filter()
 
 # Окно
 root = tk.Tk()
@@ -104,11 +128,9 @@ root.geometry("750x550")
 # Заголовок
 tk.Label(root, text="МОЯ БИБЛИОТЕКА", font=("Arial", 16, "bold")).pack(pady=10)
 
-# Рамка для добавления
-add_frame = tk.Frame(root, relief="groove", bd=2)
+# ===== Рамка для добавления =====
+add_frame = tk.LabelFrame(root, text="ДОБАВИТЬ КНИГУ", font=("Arial", 10, "bold"))
 add_frame.pack(fill="x", padx=10, pady=5)
-
-tk.Label(add_frame, text="ДОБАВИТЬ КНИГУ", font=("Arial", 10, "bold")).pack(pady=5)
 
 row1 = tk.Frame(add_frame)
 row1.pack(pady=5)
@@ -134,11 +156,9 @@ pages_entry.grid(row=0, column=3, padx=5)
 
 tk.Button(add_frame, text="ДОБАВИТЬ КНИГУ", command=add_book, bg="green", fg="white").pack(pady=5)
 
-# Рамка для фильтров
-filter_frame = tk.Frame(root, relief="groove", bd=2)
+# ===== Рамка для фильтров =====
+filter_frame = tk.LabelFrame(root, text="ФИЛЬТРАЦИЯ", font=("Arial", 10, "bold"))
 filter_frame.pack(fill="x", padx=10, pady=5)
-
-tk.Label(filter_frame, text="ФИЛЬТРАЦИЯ", font=("Arial", 10, "bold")).pack(pady=5)
 
 row_f = tk.Frame(filter_frame)
 row_f.pack(pady=5)
@@ -154,8 +174,8 @@ pages_filter_entry.grid(row=0, column=3, padx=5)
 tk.Button(row_f, text="ФИЛЬТР", command=filter_books, bg="blue", fg="white").grid(row=0, column=4, padx=5)
 tk.Button(row_f, text="СБРОС", command=reset_filter, bg="orange").grid(row=0, column=5, padx=5)
 
-# Таблица
-table_frame = tk.Frame(root)
+# ===== Таблица =====
+table_frame = tk.LabelFrame(root, text="СПИСОК КНИГ", font=("Arial", 10, "bold"))
 table_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
 columns = ("Название", "Автор", "Жанр", "Страниц")
@@ -166,19 +186,20 @@ tree.heading("Автор", text="Автор")
 tree.heading("Жанр", text="Жанр")
 tree.heading("Страниц", text="Страниц")
 
-tree.column("Название", width=200)
-tree.column("Автор", width=120)
-tree.column("Жанр", width=100)
+tree.column("Название", width=250)
+tree.column("Автор", width=130)
+tree.column("Жанр", width=110)
 tree.column("Страниц", width=80)
 
 scroll = tk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
 tree.configure(yscrollcommand=scroll.set)
 
-tree.pack(side="left", fill="both", expand=True)
-scroll.pack(side="right", fill="y")
+tree.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+scroll.pack(side="right", fill="y", pady=5)
 
-# Кнопка удаления
+# ===== Кнопка удаления =====
 tk.Button(root, text="УДАЛИТЬ ВЫБРАННУЮ КНИГУ", command=delete_book, bg="red", fg="white").pack(pady=10)
 
+# Показываем таблицу
 update_table()
 root.mainloop()
