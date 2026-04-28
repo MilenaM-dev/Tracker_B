@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 
+
 # Загрузка данных
 try:
     with open("books.json", "r", encoding="utf-8") as f:
